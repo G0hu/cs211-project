@@ -53,7 +53,7 @@ class Mover {
       PVector normal = location;
       PVector cyl = cylinders.get(i);
       float distance = sqrt(pow((location.x-cyl.x), 2)+pow((location.z-cyl.z), 2));
-      if (distance <= 16) {
+      if (distance <= 20) {
         println("Collision with cylinder : "+i);
         //normal.sub(cyl);
         //velocity.sub(2*velocity.dot(normal)*normal);
