@@ -7,6 +7,8 @@ class Mover {
   float mu = 0.05;
   float frictionMagnitude = normalForce * mu;
   PVector friction;
+  float sphereDiam = 10;
+  float minDist = cylinderBaseSize + sphereDiam;
   
   Mover() {
     location = new PVector(0, 0, 0);
@@ -27,9 +29,9 @@ class Mover {
     checkCylinderCollision(cylinders);
   }
   void display() {
-    fill(127);
+    fill(122, 187, 180);
     translate(location.x, location.y, location.z);
-    sphere(10);
+    sphere(sphereDiam);
   }
   void checkEdges() {
 
@@ -53,7 +55,7 @@ class Mover {
       PVector normal = location;
       PVector cyl = cylinders.get(i);
       float distance = sqrt(pow((location.x-cyl.x), 2)+pow((location.z-cyl.z), 2));
-      if (distance <= 20) {
+      if (distance <= minDist) {
         println("Collision with cylinder : "+i);
         //normal.sub(cyl);
         //velocity.sub(2*velocity.dot(normal)*normal);
@@ -62,6 +64,14 @@ class Mover {
         float cst = PVector.dot(velocity, normVec)*2;
         PVector vec = PVector.mult(normVec, cst);
         velocity = PVector.sub(velocity, vec);
+        PVector resPosVec = new PVector(location.x - cyl.x, location.y - cyl.y, 0);
+        resPosVec.normalize();
+        resPosVec = PVector.mult(resPosVec, 30);
+        print("location avant " + location.x + ", " + location.y); 
+        location.x = cyl.x + resPosVec.x;
+        location.y = cyl.y + resPosVec.y;
+        print("location apres " + location.x + ", " + location.y); 
+        
         
       }
     }

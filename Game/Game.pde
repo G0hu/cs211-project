@@ -1,8 +1,11 @@
 Mover mover;
 Cylinder cylinder;
+PGraphics bottomBar;
+PGraphics topView;
 
 void setup() { 
   size(500, 500, P3D); 
+  bottomBar = createGraphics(525,200,P2D);
   noStroke();
   f= createFont("Arial", 45, true);
   mover = new Mover();
@@ -26,13 +29,21 @@ boolean paused = false;
 ArrayList<PVector> cylinders = new ArrayList<PVector>();
 
 void drawBase() {
+  drawMySurface();
   pushMatrix();
   textFont(f, 36);
-  fill(255);
-  background(200);
+  fill(133, 116, 86);
+  background(237, 229, 194);
+  image(bottomBar, 0, 400);
   lights();
   translate(width/2, height/2, 0);
   popMatrix();
+}
+
+void drawMySurface() {
+  bottomBar.beginDraw();
+  bottomBar.background(152, 217, 210);
+  bottomBar.endDraw();
 }
 void pause() {
   paused = true;
