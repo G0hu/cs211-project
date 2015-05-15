@@ -2,6 +2,7 @@
 import processing.core.PApplet;
 import processing.core.PImage;
 import processing.video.Capture;
+import java.util.Collections;
 
 HScrollbar thresholdBarMax;
 HScrollbar thresholdBarMin;
@@ -177,6 +178,7 @@ public PImage hough(PImage edgeImg) {
 
   // our accumulator (with a 1 pix margin around)
   int[] accumulator = new int[(phiDim + 2) * (rDim + 2)];
+  ArrayList<Integer> bestCandidates = new ArrayList<Integer>();
 
 
   // Fill the accumulator: on edge points (ie, white pixels of the edge
@@ -198,8 +200,49 @@ public PImage hough(PImage edgeImg) {
       }
     }
   }
+
+  // size of the region we search for a local maximum
+  int neighbourhood = 10;
+  // only search around lines with more that this amount of votes
+  // (to be adapted to your image)
+  int minVotes = 200;
+  for (int accR = 0; accR < rDim; accR++) {
+    for (int accPhi = 0; accPhi < phiDim; accPhi++) {
+      // compute current index in the accumulator
+      int idx = (accPhi + 1) * (rDim + 2) + accR + 1;
+      if (accumulator[idx] > minVotes) {
+        boolean bestCandidate=true;
+        // iterate over the neighbourhood
+        for (int dPhi=-neighbourhood/2; dPhi < neighbourhood/2+1; dPhi++) {
+          // check we are not outside the image
+          if ( accPhi+dPhi < 0 || accPhi+dPhi >= phiDim) continue;
+          for (int dR=-neighbourhood/2; dR < neighbourhood/2 +1; dR++) {
+            // check we are not outside the image
+            if (accR+dR < 0 || accR+dR >= rDim) continue;
+            int neighbourIdx = (accPhi + dPhi + 1) * (rDim + 2) + accR + dR + 1;
+            if (accumulator[idx] < accumulator[neighbourIdx]) {
+              // the current idx is not a local maximum!
+              bestCandidate=false;
+              break;
+            }
+          }
+          if (!bestCandidate) break;
+        }
+        if (bestCandidate) {
+          // the current idx *is* a local maximum
+          bestCandidates.add(idx);
+        }
+      }
+    }
+  }
+
+
+  Collections.sort(bestCandidates, new HoughComparator(accumulator));
+  bestCandidates = new ArrayList<Integer>(bestCandidates.subList(0, Math.min(bestCandidates.size(), 5)));
+  System.out.println("size of best"+ bestCandidates.size());
+
   for (int idx = 0; idx < accumulator.length; idx++) {
-    if (accumulator[idx] > 200) {
+    if (bestCandidates.contains(idx)) {
       // first, compute back the (r, phi) polar coordinates:
       int accPhi = (int) (idx / (rDim + 2)) - 1;
       int accR = idx - (accPhi + 1) * (rDim + 2) - 1;
@@ -240,6 +283,7 @@ public PImage hough(PImage edgeImg) {
     }
   }
 
+
   //code to display the accumulator
   PImage houghImg = createImage(rDim + 2, phiDim + 2, ALPHA);
   for (int i = 0; i < accumulator.length; i++) {
@@ -261,3 +305,4 @@ public PImage threshold(PImage img) {
   } 
   return result;
 }
+
