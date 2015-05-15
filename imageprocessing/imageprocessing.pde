@@ -21,7 +21,7 @@ public void draw() {
   min = (int)(thresholdBarMin.getPos()*255);
 
   background(color(0, 0, 0));
-  result = sobel(img);
+  result = convolute(img);
 
   image(img, 0, 0);
   image(result, 800, 0);
@@ -77,8 +77,8 @@ public PImage sobel(PImage img) {
 
       for (int k=- 1; k< 2; k++) {
         for (int l=- 1; l<2; l++) {
-          sum_h+=(img.get(x+l,y+k)*hKernel[k+1][l+1]);
-          sum_v+=(img.get(x+l,y+k)*vKernel[k+1][l+1]);
+          sum_h+=(img.get(x+l, y+k)*hKernel[k+1][l+1]);
+          sum_v+=(img.get(x+l, y+k)*vKernel[k+1][l+1]);
         }
       }
       sum = (int)sqrt(pow(sum_h, 2) + pow(sum_v, 2));
@@ -89,7 +89,7 @@ public PImage sobel(PImage img) {
     }
   }
   // *************************************
-  
+
   for (int y = 2; y < img.height - 2; y++) { // Skip top and bottom edges
     for (int x = 2; x < img.width - 2; x++) { // Skip left and right
       if (buffer[y * img.width + x] > (int)(max * 0.3f)) { // 30% of the max
@@ -105,18 +105,18 @@ public PImage sobel(PImage img) {
 public PImage convolute(PImage target) {
   float[][] kernel = { 
     {
-      9, 12, 9
+      1, 1, 1
     }
     , 
     {
-      12, 15, 12
+      1, 1, 1
     }
     , 
     {
-      9, 12, 9
+      1, 1, 1
     }
   };
-  float weight = 225.f;
+  float weight = 1.f;
   // create a greyscale image (type: ALPHA) for output
   PImage conv = createImage(target.width, target.height, ALPHA);
   // kernel size N = 3
@@ -128,29 +128,47 @@ public PImage convolute(PImage target) {
       float sum = 0;
       for (int k=-1; k<2; k++) {
         for (int l=-1; l<2; l++) {
-          sum+= (brightness(target.pixels[(target.width*(i+k))+j+l])*kernel[k+1][l+1]);
+          sum+= (target.get(j+k, i+l)*kernel[k+1][l+1]);
         }
       }
       // - sum all these intensities and divide it by the weight
       sum= sum/weight;
 
       // - set result.pixels[y * img.width + x] to this value
-      conv.pixels[i*conv.width + j]= color((int)sum);
+      conv.pixels[i*conv.width + j]= (int)sum;
     }
   }
   return conv;
 }
-
-public PImage threshold(PImage img) {
-  PImage result = createImage(img.width, img.height, RGB); // create a new, initially transparent, 'result' image
-  for (int i = 0; i < img.width * img.height; i++) {
-    // do something with the pixel img.pixels[i]
-    if (hue(img.pixels[i])>min && hue(img.pixels[i])<max) {
-      result.pixels[i]= img.pixels[i];
-    } else {
-      result.pixels[i]=0;
+public void hough(PImage edgeImg) {
+  
+  float discretizationStepsPhi = 0.06f;
+  float discretizationStepsR = 2.5f;
+  
+  // dimensions of the accumulator
+  int phiDim = (int) (Math.PI / discretizationStepsPhi);
+  int rDim = (int) (((edgeImg.width + edgeImg.height) * 2 + 1) / discretizationStepsR);
+  
+  // our accumulator (with a 1 pix margin around)
+  int[] accumulator = new int[(phiDim + 2) * (rDim + 2)];
+  
+  
+  // Fill the accumulator: on edge points (ie, white pixels of the edge
+  // image), store all possible (r, phi) pairs describing lines going
+  // through the point.
+  for (int y = 0; y < edgeImg.height; y++) {
+    for (int x = 0; x < edgeImg.width; x++) {
+      
+      // Are we on an edge?
+      if (brightness(edgeImg.pixels[y * edgeImg.width + x]) != 0) {
+        
+        // ...determine here all the lines (r, phi) passing through
+        // pixel (x,y), convert (r,phi) to coordinates in the
+        // accumulator, and increment accordingly the accumulator.
+        
+        
+      }
     }
-  } 
-  return result;
+  }
 }
 
