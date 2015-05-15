@@ -6,11 +6,14 @@ import java.util.Collections;
 
 HScrollbar thresholdBarMax;
 HScrollbar thresholdBarMin;
-PImage img, result;
+PImage img, result, stillImg;
 Capture cam;
 int max, min;
 public void setup() {
+
   size(800, 600);
+
+  stillImg = loadImage("board1.jpg");
 
   //Setup of the camera
   String[] cameras = Capture.list();
@@ -37,6 +40,7 @@ public void setup() {
   //noLoop(); // no interactive behaviour: draw() will be called only once.
 }
 public void draw() {
+  ArrayList<PVector> lines = new ArrayList<PVector>();
   if (cam.available() == true) {
     cam.read();
   }
@@ -49,7 +53,8 @@ public void draw() {
   //result= threshold(img);
   result = sobel(img);
   image(result, 0, 0);
-  result = hough(result);
+  lines= hough(result);
+  lines = getIntersections(lines);
 
 
   thresholdBarMax.display();
@@ -167,14 +172,28 @@ public PImage convolute(PImage target) {
   }
   return conv;
 }
-public PImage hough(PImage edgeImg) {
+public ArrayList<PVector> hough(PImage edgeImg) {
 
+
+
+  ArrayList<PVector> lines = new ArrayList<PVector>();
   float discretizationStepsPhi = 0.06f;
   float discretizationStepsR = 2.5f;
 
   // dimensions of the accumulator
   int phiDim = (int) (Math.PI / discretizationStepsPhi);
   int rDim = (int) (((edgeImg.width + edgeImg.height) * 2 + 1) / discretizationStepsR);
+
+  // pre-compute the sin and cos values
+  float[] tabSin = new float[phiDim];
+  float[] tabCos = new float[phiDim];
+  float ang = 0;
+  float inverseR = 1.f / discretizationStepsR;
+  for (int accPhi = 0; accPhi < phiDim; ang += discretizationStepsPhi, accPhi++) {
+    // we can also pre-multiply by (1/discretizationStepsR) since we need it in the Hough loop
+    tabSin[accPhi] = (float) (Math.sin(ang) * inverseR);
+    tabCos[accPhi] = (float) (Math.cos(ang) * inverseR);
+  }
 
   // our accumulator (with a 1 pix margin around)
   int[] accumulator = new int[(phiDim + 2) * (rDim + 2)];
@@ -191,9 +210,11 @@ public PImage hough(PImage edgeImg) {
       if (brightness(edgeImg.pixels[y * edgeImg.width + x]) != 0) {
         float phi =0;
         for (int i =0; i<phiDim; i++) {
-          double r = x*Math.cos(phi)+y*Math.sin(phi);
-          int rIndex = Math.round((float)(r/discretizationStepsR)+(rDim-1)/2);
           int phiIndex= Math.round(phi/discretizationStepsPhi);
+          double r = x*tabCos[phiIndex]+y*tabSin[phiIndex];
+          int rIndex = Math.round((float)(r/discretizationStepsR)+(rDim-1)/2);
+
+
           accumulator[(phiIndex+1)*(rDim+2)+rIndex+1] +=1;
           phi+= discretizationStepsPhi;
         }
@@ -239,15 +260,18 @@ public PImage hough(PImage edgeImg) {
 
   Collections.sort(bestCandidates, new HoughComparator(accumulator));
   bestCandidates = new ArrayList<Integer>(bestCandidates.subList(0, Math.min(bestCandidates.size(), 5)));
-  System.out.println("size of best"+ bestCandidates.size());
 
   for (int idx = 0; idx < accumulator.length; idx++) {
     if (bestCandidates.contains(idx)) {
+
       // first, compute back the (r, phi) polar coordinates:
       int accPhi = (int) (idx / (rDim + 2)) - 1;
       int accR = idx - (accPhi + 1) * (rDim + 2) - 1;
       float r = (accR - (rDim - 1) * 0.5f) * discretizationStepsR;
       float phi = accPhi * discretizationStepsPhi;
+
+      lines.add(new PVector(r, phi));
+
       // Cartesian equation of a line: y = ax + b
       // in polar, y = (-cos(phi)/sin(phi))x + (r/sin(phi))
       // => y = 0 : x = r / cos(phi)
@@ -285,13 +309,15 @@ public PImage hough(PImage edgeImg) {
 
 
   //code to display the accumulator
-  PImage houghImg = createImage(rDim + 2, phiDim + 2, ALPHA);
-  for (int i = 0; i < accumulator.length; i++) {
-    houghImg.pixels[i] = color(min(255, accumulator[i]));
-  }
-  houghImg.updatePixels();
-  houghImg.resize(300, 300);
-  return houghImg;
+  /*PImage houghImg = createImage(rDim + 2, phiDim + 2, ALPHA);
+   for (int i = 0; i < accumulator.length; i++) {
+   houghImg.pixels[i] = color(min(255, accumulator[i]));
+   }
+   houghImg.updatePixels();
+   houghImg.resize(300, 300);
+   return houghImg;*/
+
+  return lines;
 }
 
 public PImage threshold(PImage img) {
@@ -304,5 +330,25 @@ public PImage threshold(PImage img) {
     }
   } 
   return result;
+}
+
+public ArrayList<PVector> getIntersections(ArrayList<PVector> lines) {
+  ArrayList<PVector> intersections = new ArrayList<PVector>();
+  for (int i = 0; i < lines.size () - 1; i++) {
+    PVector line1 = lines.get(i);
+    for (int j = i + 1; j < lines.size (); j++) {
+      PVector line2 = lines.get(j);
+      // compute the intersection and add it to 'intersections'
+      // draw the intersection
+
+      double d = Math.cos(line2.y)*Math.sin(line1.y) -Math.cos(line1.y)*Math.sin(line2.y);
+      double x = (line2.x*Math.sin(line1.y)-line1.x*Math.sin(line2.y))/d;
+      double y = (-line2.x*Math.cos(line1.y)+line1.x*Math.cos(line2.y))/d;
+
+      fill(255, 128, 0);
+      ellipse((float)x, (float)y, 10, 10);
+    }
+  }
+  return intersections;
 }
 
