@@ -68,10 +68,31 @@ public PImage sobel(PImage img) {
   float[] buffer = new float[img.width * img.height];
   // *************************************
   // Implement here the double convolution
-  // *************************************
   for (int y = 2; y < img.height - 2; y++) { // Skip top and bottom edges
     for (int x = 2; x < img.width - 2; x++) { // Skip left and right
-      if (buffer[y * img.width + x] > (int)(max * 0.3f)) { // 30% of the max
+      float sum_h, sum_v, sum;
+      sum_h =0;
+      sum_v =0;
+      sum=0;
+
+      for (int k=- (hKernel.length/2); k< (hKernel.length/2); k++) {
+        for (int l=- (hKernel[0].length/2); l<(hKernel[0].length/2); l++) {
+          sum_h+=(brightness(img.pixels[((y+k)*img.width)+x+l])*hKernel[k+1][l+1]);
+          sum_v+=(brightness(img.pixels[((y+k)*img.width)+x+l])*vKernel[k+1][l+1]);
+        }
+      }
+      sum = sqrt(pow(sum_h, 2) + pow(sum_v, 2));
+      if (sum>max) {
+        max=sum;
+      }
+      buffer[y*img.width+x] =sum;
+    }
+  }
+  // *************************************
+  
+  for (int y = 2; y < img.height - 2; y++) { // Skip top and bottom edges
+    for (int x = 2; x < img.width - 2; x++) { // Skip left and right
+      if (buffer[y * img.width + x] > (int)(max * 0.4f)) { // 30% of the max
         result.pixels[y * img.width + x] = color(255);
       } else {
         result.pixels[y * img.width + x] = color(0);
@@ -95,7 +116,7 @@ public PImage convolute(PImage target) {
       9, 12, 9
     }
   };
-  float weight = 1.f;
+  float weight = 225.f;
   // create a greyscale image (type: ALPHA) for output
   PImage conv = createImage(target.width, target.height, ALPHA);
   // kernel size N = 3
