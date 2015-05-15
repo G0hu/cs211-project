@@ -26,9 +26,9 @@ public void setup() {
   }
 
 
-  
-  thresholdBarMin = new HScrollbar(800, 580, 800, 20);
-  thresholdBarMax = new HScrollbar(800, 550, 800, 20);
+
+  thresholdBarMin = new HScrollbar(0, 580, 800, 20);
+  thresholdBarMax = new HScrollbar(0, 550, 800, 20);
 
   max = (int)(thresholdBarMax.getPos()*255);
   min = (int)(thresholdBarMin.getPos()*255);
@@ -40,12 +40,12 @@ public void draw() {
     cam.read();
   }
   img = cam.get();
-  
+
   max = (int)(thresholdBarMax.getPos()*255);
   min = (int)(thresholdBarMin.getPos()*255);
 
   background(color(0, 0, 0));
-
+  //result= threshold(img);
   result = sobel(img);
   image(result, 0, 0);
   result = hough(result);
@@ -250,3 +250,14 @@ public PImage hough(PImage edgeImg) {
   return houghImg;
 }
 
+public PImage threshold(PImage img) {
+  PImage result = createImage(img.width, img.height, RGB); // create a new, initially transparent, 'result' image
+  for (int i = 0; i < img.width * img.height; i++) {
+    if (hue(img.pixels[i])>min && hue(img.pixels[i])<max) {
+      result.pixels[i]= img.pixels[i];
+    } else {
+      result.pixels[i]=0;
+    }
+  } 
+  return result;
+}
