@@ -70,18 +70,18 @@ public PImage sobel(PImage img) {
   // Implement here the double convolution
   for (int y = 2; y < img.height - 2; y++) { // Skip top and bottom edges
     for (int x = 2; x < img.width - 2; x++) { // Skip left and right
-      float sum_h, sum_v, sum;
+      float sum_h, sum_v;
       sum_h =0;
       sum_v =0;
-      sum=0;
+      int sum=0;
 
-      for (int k=- (hKernel.length/2); k< (hKernel.length/2); k++) {
-        for (int l=- (hKernel[0].length/2); l<(hKernel[0].length/2); l++) {
-          sum_h+=(brightness(img.pixels[((y+k)*img.width)+x+l])*hKernel[k+1][l+1]);
-          sum_v+=(brightness(img.pixels[((y+k)*img.width)+x+l])*vKernel[k+1][l+1]);
+      for (int k=- 1; k< 2; k++) {
+        for (int l=- 1; l<2; l++) {
+          sum_h+=(img.get(x+l,y+k)*hKernel[k+1][l+1]);
+          sum_v+=(img.get(x+l,y+k)*vKernel[k+1][l+1]);
         }
       }
-      sum = sqrt(pow(sum_h, 2) + pow(sum_v, 2));
+      sum = (int)sqrt(pow(sum_h, 2) + pow(sum_v, 2));
       if (sum>max) {
         max=sum;
       }
@@ -92,7 +92,7 @@ public PImage sobel(PImage img) {
   
   for (int y = 2; y < img.height - 2; y++) { // Skip top and bottom edges
     for (int x = 2; x < img.width - 2; x++) { // Skip left and right
-      if (buffer[y * img.width + x] > (int)(max * 0.4f)) { // 30% of the max
+      if (buffer[y * img.width + x] > (int)(max * 0.3f)) { // 30% of the max
         result.pixels[y * img.width + x] = color(255);
       } else {
         result.pixels[y * img.width + x] = color(0);
