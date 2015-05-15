@@ -4,15 +4,15 @@ import processing.core.PImage;
 import processing.video.Capture;
 import java.util.Collections;
 
-HScrollbar thresholdBarMax;
-HScrollbar thresholdBarMin;
 PImage img, result, stillImg;
 Capture cam;
-int max, min;
+int min, max;
+
 public void setup() {
 
   size(800, 600);
 
+  //loading the still image for testing purpose (replace the img by stillImg to use still instead of webcam stream
   stillImg = loadImage("board1.jpg");
 
   //Setup of the camera
@@ -28,42 +28,126 @@ public void setup() {
     cam = new Capture(this, cameras[0]);
     cam.start();
   }
-
-
-
-  thresholdBarMin = new HScrollbar(0, 580, 800, 20);
-  thresholdBarMax = new HScrollbar(0, 550, 800, 20);
-
-  max = (int)(thresholdBarMax.getPos()*255);
-  min = (int)(thresholdBarMin.getPos()*255);
-
-  //noLoop(); // no interactive behaviour: draw() will be called only once.
 }
+
+
 public void draw() {
+  //initialization of the list of lines created by hough
   ArrayList<PVector> lines = new ArrayList<PVector>();
+
+  //initialization of the list of intersections created by hough
+  ArrayList<PVector> intersections = new ArrayList<PVector>();
+
+  //getting the camera stream into img to then process it
   if (cam.available() == true) {
     cam.read();
   }
   img = cam.get();
 
-  max = (int)(thresholdBarMax.getPos()*255);
-  min = (int)(thresholdBarMin.getPos()*255);
 
   background(color(0, 0, 0));
-  //result= threshold(img);
-  result = sobel(img);
+
+  //pipeline (the image(result,0,0) can be moved to test each part
+  result= hueThreshold(img, 80, 130);
+  //image(result, 0, 0);
+  result = brightnessThreshold(result,50);
+  //image(result, 0, 0);
+  result = saturationThreshold(result, 128);
+  //image(result, 0, 0);
+  //result = blurring(result);
+  //result = saturationThreshold(result, 100);
   image(result, 0, 0);
+  result = sobel(result);
+
   lines= hough(result);
   lines = getIntersections(lines);
-
-
-  thresholdBarMax.display();
-  thresholdBarMin.display();
-
-  thresholdBarMax.update();
-  thresholdBarMin.update();
 }
 
+
+//algorithm that keep only pixels with a specific hue (color)
+public PImage hueThreshold(PImage img, int hueMin, int hueMax) {
+  PImage result = createImage(img.width, img.height, RGB); // create a new, initially transparent, 'result' image
+  for (int i = 0; i < img.width * img.height; i++) {
+    if (hue(img.pixels[i])>hueMin && hue(img.pixels[i])<hueMax) {
+      result.pixels[i]= img.pixels[i];
+    } else {
+      result.pixels[i]=0;
+    }
+  } 
+  return result;
+}
+//algorithm that keep only pixels with a specific saturation (color)
+public PImage brightnessThreshold(PImage img, int brightness) {
+  PImage result = createImage(img.width, img.height, RGB); // create a new, initially transparent, 'result' image
+  for (int i = 0; i < img.width * img.height; i++) {
+    if (brightness(img.pixels[i])>brightness) {
+      result.pixels[i]= img.pixels[i];
+    } else {
+      result.pixels[i]=0;
+    }
+  } 
+  return result;
+}
+//algorithm that keep only pixels with a specific hue (color)
+public PImage saturationThreshold(PImage img, int saturation) {
+  PImage result = createImage(img.width, img.height, RGB); // create a new, initially transparent, 'result' image
+  for (int i = 0; i < img.width * img.height; i++) {
+    if (saturation(img.pixels[i])>saturation) {
+      result.pixels[i]= color(255, 255, 255);
+    } else {
+      result.pixels[i]=0;
+    }
+  } 
+  return result;
+}
+
+//algorithm that blurrs the image (currently not working)
+public PImage blurring(PImage target) {
+  float[][] kernel = { 
+    {
+      9, 12, 9
+    }
+    , 
+    {
+      12, 15, 12
+    }
+    , 
+    {
+      9, 12, 9
+    }
+  };
+  float weight = 1.f;
+  PImage blurred = createImage(target.width, target.height, RGB);
+  // kernel size N = 3
+  for (int i=1; i< target.height-1; i++) {
+    for (int j = 1; j< target.width-1; j++) {
+      // - multiply intensities for pixels in the range
+      // (x - N/2, y - N/2) to (x + N/2, y + N/2) by the
+      // corresponding weights in the kernel matrix
+      float sumR = 0;
+      float sumG =0;
+      float sumB =0;
+      for (int k=-1; k<2; k++) {
+        for (int l=-1; l<2; l++) {
+          sumR+= (red(target.get(j+k, i+l))*kernel[k+1][l+1]);
+          sumG+= (green(target.get(j+k, i+l))*kernel[k+1][l+1]);
+          sumB+= (blue(target.get(j+k, i+l))*kernel[k+1][l+1]);
+        }
+      }
+      // - sum all these intensities and divide it by the weight
+      sumR= sumR/weight;
+      sumG= sumG/weight;
+      sumB= sumB/weight;
+
+
+      // - set result.pixels[y * img.width + x] to this value
+      blurred.pixels[i*blurred.width + j]= color(sumR, sumG, sumB);
+    }
+  }
+  return blurred;
+}
+
+//sobel algorithm to detect edges
 public PImage sobel(PImage img) {
   float[][] hKernel = { 
     { 
@@ -91,6 +175,8 @@ public PImage sobel(PImage img) {
       0, 0, 0
     }
   };
+
+  //initialization of the resulting image
   PImage result = createImage(img.width, img.height, ALPHA);
   // clear the image
   for (int i = 0; i < img.width * img.height; i++) {
@@ -98,21 +184,22 @@ public PImage sobel(PImage img) {
   }
   float max=0;
   float[] buffer = new float[img.width * img.height];
-  // *************************************
-  // Implement here the double convolution
+
+
+  //application of the two kernels on each pixel 
   for (int y = 2; y < img.height - 2; y++) { // Skip top and bottom edges
     for (int x = 2; x < img.width - 2; x++) { // Skip left and right
       float sum_h, sum_v;
       sum_h =0;
       sum_v =0;
       int sum=0;
-
       for (int k=- 1; k< 2; k++) {
         for (int l=- 1; l<2; l++) {
           sum_h+=(img.get(x+l, y+k)*hKernel[k+1][l+1]);
           sum_v+=(img.get(x+l, y+k)*vKernel[k+1][l+1]);
         }
       }
+      //composition of the two results
       sum = (int)sqrt(pow(sum_h, 2) + pow(sum_v, 2));
       if (sum>max) {
         max=sum;
@@ -120,8 +207,8 @@ public PImage sobel(PImage img) {
       buffer[y*img.width+x] =sum;
     }
   }
-  // *************************************
 
+  //filling of the resulting image using a percentage of the maximal value 
   for (int y = 2; y < img.height - 2; y++) { // Skip top and bottom edges
     for (int x = 2; x < img.width - 2; x++) { // Skip left and right
       if (buffer[y * img.width + x] > (int)(max * 0.3f)) { // 30% of the max
@@ -134,47 +221,11 @@ public PImage sobel(PImage img) {
   return result;
 }
 
-public PImage convolute(PImage target) {
-  float[][] kernel = { 
-    {
-      1, 1, 1
-    }
-    , 
-    {
-      1, 1, 1
-    }
-    , 
-    {
-      1, 1, 1
-    }
-  };
-  float weight = 1.f;
-  // create a greyscale image (type: ALPHA) for output
-  PImage conv = createImage(target.width, target.height, ALPHA);
-  // kernel size N = 3
-  for (int i=1; i< target.height-1; i++) {
-    for (int j = 1; j< target.width-1; j++) {
-      // - multiply intensities for pixels in the range
-      // (x - N/2, y - N/2) to (x + N/2, y + N/2) by the
-      // corresponding weights in the kernel matrix
-      float sum = 0;
-      for (int k=-1; k<2; k++) {
-        for (int l=-1; l<2; l++) {
-          sum+= (target.get(j+k, i+l)*kernel[k+1][l+1]);
-        }
-      }
-      // - sum all these intensities and divide it by the weight
-      sum= sum/weight;
 
-      // - set result.pixels[y * img.width + x] to this value
-      conv.pixels[i*conv.width + j]= (int)sum;
-    }
-  }
-  return conv;
-}
+
+//hough algorithm that compute all the possible lines to draw and select only the best ones (currently 5)
+//returns a list of lines as PVector
 public ArrayList<PVector> hough(PImage edgeImg) {
-
-
 
   ArrayList<PVector> lines = new ArrayList<PVector>();
   float discretizationStepsPhi = 0.06f;
@@ -212,7 +263,7 @@ public ArrayList<PVector> hough(PImage edgeImg) {
         for (int i =0; i<phiDim; i++) {
           int phiIndex= Math.round(phi/discretizationStepsPhi);
           double r = x*tabCos[phiIndex]+y*tabSin[phiIndex];
-          int rIndex = Math.round((float)(r/discretizationStepsR)+(rDim-1)/2);
+          int rIndex = Math.round((float)(r)+(rDim-1)/2);
 
 
           accumulator[(phiIndex+1)*(rDim+2)+rIndex+1] +=1;
@@ -261,6 +312,8 @@ public ArrayList<PVector> hough(PImage edgeImg) {
   Collections.sort(bestCandidates, new HoughComparator(accumulator));
   bestCandidates = new ArrayList<Integer>(bestCandidates.subList(0, Math.min(bestCandidates.size(), 5)));
 
+
+  //Display of the lines
   for (int idx = 0; idx < accumulator.length; idx++) {
     if (bestCandidates.contains(idx)) {
 
@@ -320,18 +373,9 @@ public ArrayList<PVector> hough(PImage edgeImg) {
   return lines;
 }
 
-public PImage threshold(PImage img) {
-  PImage result = createImage(img.width, img.height, RGB); // create a new, initially transparent, 'result' image
-  for (int i = 0; i < img.width * img.height; i++) {
-    if (hue(img.pixels[i])>min && hue(img.pixels[i])<max) {
-      result.pixels[i]= img.pixels[i];
-    } else {
-      result.pixels[i]=0;
-    }
-  } 
-  return result;
-}
 
+
+//algorithm that compute the intersections of a list of lines and return a list of intersections as PVector
 public ArrayList<PVector> getIntersections(ArrayList<PVector> lines) {
   ArrayList<PVector> intersections = new ArrayList<PVector>();
   for (int i = 0; i < lines.size () - 1; i++) {
