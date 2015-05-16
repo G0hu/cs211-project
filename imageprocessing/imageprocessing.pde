@@ -16,7 +16,7 @@ public void setup() {
   if (useStill) {
     // Loading the still image for testing purpose
     // (replace the img by stillImg to use still instead of webcam stream
-    stillImg = loadImage("board1.jpg");
+    stillImg = loadImage("board4.jpg");
   } else {
     setupCamera();
   }
@@ -71,22 +71,23 @@ public void draw() {
 
   // pipeline (the image(result,0,0) can be moved to test each part
   result = hueThreshold(img, 80, 140);
-  result = brightnessThreshold(result, 50);
+  result = brightnessThreshold(result, 40);
   result = saturationThreshold(result, 100);
   result = blurring(result);
+  result = intensityThreshold(result, 170);
   result = sobel(result);
 
   image(img, 0, 0);
-
+  
   PImage houghImg = hough(result, lines);
-  image(houghImg, 800, 0);
-
+  // image(houghImg, 800, 0);
+  
   intersections = getIntersections(lines);
-
-  image(result, 800 + 600, 0);
-
+  
+  image(result, 800 + 600 - 600, 0);
+  
   if (useStill) {
-     noLoop();
+     noLoop(); 
   }
 }
 
@@ -128,41 +129,54 @@ public PImage saturationThreshold(PImage img, int saturation) {
   return result;
 }
 
+public PImage intensityThreshold(PImage img, float minIntensity) {
+   PImage result = createImage(img.width, img.height, ALPHA);
+   for (int i = 0; i < img.width * img.height; i++) {
+    float intensity = 0.2989*red(img.pixels[i]) + 0.5870*green(img.pixels[i]) + 0.1140*blue(img.pixels[i]);
+    if (intensity>minIntensity) {
+      result.pixels[i]= color(255, 255, 255); // img.pixels[i]; // color(255, 255, 255);
+    } else {
+      result.pixels[i]= 0;
+    }
+  } 
+  return result;
+}
+
 // algorithm that blurs the image
 public PImage blurring(PImage target) {
   float[][] kernel = { 
-    {  9, 12,  9 },
-    { 12, 15, 12 },
+    {  9, 12,  9 }, 
+    { 12, 15, 12 }, 
     {  9, 12,  9 }
   };
-
-  float weight = 1.0f;
-
-  return applyKernel(target, kernel, weight);
+  
+  return applyKernel(target, kernel);
 }
 
-public PImage applyKernel(PImage target, float[][] kernel, float weight) {
-   PImage result = createImage(target.width, target.height, RGB);
-  // kernel size N = 3
-  for (int i=1; i< target.height-1; i++) {
-    for (int j = 1; j< target.width-1; j++) {
+public PImage applyKernel(PImage target, float[][] kernel) {
+   PImage result = createImage(target.width, target.height, ALPHA);
+  int n = kernel.length / 2;
+  for (int i=n; i< target.height-n; i++) {
+    for (int j = n; j< target.width-n; j++) {
       // - multiply intensities for pixels in the range
       // (x - N/2, y - N/2) to (x + N/2, y + N/2) by the
       // corresponding weights in the kernel matrix
       float sumR = 0;
-      float sumG =0;
-      float sumB =0;
-      for (int k=-1; k<2; k++) {
-        for (int l=-1; l<2; l++) {
-          sumR+= (red(target.get(j+k, i+l))*kernel[k+1][l+1]);
-          sumG+= (green(target.get(j+k, i+l))*kernel[k+1][l+1]);
-          sumB+= (blue(target.get(j+k, i+l))*kernel[k+1][l+1]);
+      float sumG = 0;
+      float sumB = 0;
+      float weight = 0.0f;
+      for (int k=-n; k <= n; k++) {
+        for (int l=-n; l <= n; l++) {
+          sumR += (red(  target.get(j+k, i+l)) * kernel[k+n][l+n]);
+          sumG += (green(target.get(j+k, i+l)) * kernel[k+n][l+n]);
+          sumB += (blue( target.get(j+k, i+l)) * kernel[k+n][l+n]);
+          weight += kernel[k+n][l+n];
         }
       }
       // - sum all these intensities and divide it by the weight
-      sumR= sumR/weight;
-      sumG= sumG/weight;
-      sumB= sumB/weight;
+      sumR = sumR / weight;
+      sumG = sumG / weight;
+      sumB = sumB / weight;
 
       // - set result.pixels[y * img.width + x] to this value
       result.pixels[i*result.width + j]= color(sumR, sumG, sumB);
