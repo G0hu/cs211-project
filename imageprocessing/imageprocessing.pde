@@ -11,6 +11,7 @@ Capture cam;
 int min, max;
 
 public void setup() {
+  size(800 * 2 + 600, 600);
 
   if (useStill) {
     // Loading the still image for testing purpose
@@ -75,8 +76,18 @@ public void draw() {
   result = blurring(result);
   result = sobel(result);
 
-  lines= hough(result);
-  lines = getIntersections(lines);
+  image(img, 0, 0);
+
+  PImage houghImg = hough(result, lines);
+  image(houghImg, 800, 0);
+
+  intersections = getIntersections(lines);
+
+  image(result, 800 + 600, 0);
+
+  if (useStill) {
+     noLoop();
+  }
 }
 
 
@@ -92,7 +103,7 @@ public PImage hueThreshold(PImage img, int hueMin, int hueMax) {
   } 
   return result;
 }
-//algorithm that keep only pixels with a specific saturation (color)
+//algorithm that keep only pixels with a specific brightness (color)
 public PImage brightnessThreshold(PImage img, int brightness) {
   PImage result = createImage(img.width, img.height, RGB); // create a new, initially transparent, 'result' image
   for (int i = 0; i < img.width * img.height; i++) {
@@ -104,7 +115,7 @@ public PImage brightnessThreshold(PImage img, int brightness) {
   } 
   return result;
 }
-//algorithm that keep only pixels with a specific hue (color)
+//algorithm that keep only pixels with a saturation hue (color)
 public PImage saturationThreshold(PImage img, int saturation) {
   PImage result = createImage(img.width, img.height, RGB); // create a new, initially transparent, 'result' image
   for (int i = 0; i < img.width * img.height; i++) {
@@ -238,9 +249,7 @@ public PImage sobel(PImage img) {
 
 //hough algorithm that compute all the possible lines to draw and select only the best ones (currently 5)
 //returns a list of lines as PVector
-public ArrayList<PVector> hough(PImage edgeImg) {
-
-  ArrayList<PVector> lines = new ArrayList<PVector>();
+public PImage hough(PImage edgeImg, ArrayList<PVector> lines) {
   float discretizationStepsPhi = 0.04f;
   float discretizationStepsR = 2.5f;
 
@@ -374,16 +383,15 @@ public ArrayList<PVector> hough(PImage edgeImg) {
   }
 
 
-  //code to display the accumulator
-  /*PImage houghImg = createImage(rDim + 2, phiDim + 2, ALPHA);
+  // code to display the accumulator
+  PImage houghImg = createImage(rDim + 2, phiDim + 2, ALPHA);
    for (int i = 0; i < accumulator.length; i++) {
-   houghImg.pixels[i] = color(min(255, accumulator[i]));
+     houghImg.pixels[i] = color(min(255, accumulator[i]));
    }
    houghImg.updatePixels();
-   houghImg.resize(300, 300);
-   return houghImg;*/
+   houghImg.resize(600, 600);
 
-  return lines;
+  return houghImg;
 }
 
 
@@ -408,4 +416,3 @@ public ArrayList<PVector> getIntersections(ArrayList<PVector> lines) {
   }
   return intersections;
 }
-
