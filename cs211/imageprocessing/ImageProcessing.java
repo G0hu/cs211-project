@@ -1,9 +1,34 @@
+package cs211.imageprocessing;
 
-import processing.core.PApplet;
-import processing.core.PImage;
-import processing.video.Capture;
-import java.util.Collections;
-import java.util.Random;
+import processing.core.*; 
+import processing.data.*; 
+import processing.event.*; 
+import processing.opengl.*; 
+
+import processing.core.PApplet; 
+import processing.core.PImage; 
+import processing.video.Capture; 
+import java.util.Collections; 
+import java.util.Random; 
+import java.util.Comparator; 
+
+import java.util.HashMap; 
+import java.util.ArrayList; 
+import java.io.File; 
+import java.io.BufferedReader; 
+import java.io.PrintWriter; 
+import java.io.InputStream; 
+import java.io.OutputStream; 
+import java.io.IOException; 
+
+public class ImageProcessing extends PApplet {
+
+
+
+
+
+
+
 
 boolean useStill = true;
 
@@ -19,7 +44,7 @@ public void setup() {
   if (useStill) {
     // Loading the still image for testing purpose
     // (replace the img by stillImg to use still instead of webcam stream
-    stillImg = loadImage("board4.jpg");
+    stillImg = loadImage("board1.jpg");
   } else {
     setupCamera();
   }
@@ -191,7 +216,7 @@ public PImage saturationThreshold(PImage img, int saturation) {
 public PImage intensityThreshold(PImage img, float minIntensity) {
    PImage result = createImage(img.width, img.height, ALPHA);
    for (int i = 0; i < img.width * img.height; i++) {
-    float intensity = 0.2989*red(img.pixels[i]) + 0.5870*green(img.pixels[i]) + 0.1140*blue(img.pixels[i]);
+    float intensity = 0.2989f*red(img.pixels[i]) + 0.5870f*green(img.pixels[i]) + 0.1140f*blue(img.pixels[i]);
     if (intensity>minIntensity) {
       result.pixels[i]= color(255, 255, 255); // img.pixels[i]; // color(255, 255, 255);
     } else {
@@ -488,4 +513,127 @@ public PVector intersection(PVector line1, PVector line2) {
   double y = (-line2.x*Math.cos(line1.y)+line1.x*Math.cos(line2.y))/d;
   
   return new PVector((float)x, (float)y);
+}
+class HScrollbar {
+  float barWidth; //Bar's width in pixels
+  float barHeight; //Bar's height in pixels
+  float xPosition; //Bar's x position in pixels
+  float yPosition; //Bar's y position in pixels
+  float sliderPosition, newSliderPosition; //Position of slider
+  float sliderPositionMin, sliderPositionMax; //Max and min values of slider
+  boolean mouseOver; //Is the mouse over the slider?
+  boolean locked; //Is the mouse clicking and dragging the slider now?
+  /**
+   * @brief Creates a new horizontal scrollbar
+   *
+   * @param x The x position of the top left corner of the bar in pixels
+   * @param y The y position of the top left corner of the bar in pixels
+   * @param w The width of the bar in pixels
+   * @param h The height of the bar in pixels
+   */
+  HScrollbar (float x, float y, float w, float h) {
+    barWidth = w;
+    barHeight = h;
+    xPosition = x;
+    yPosition = y;
+    sliderPosition = xPosition + barWidth/2 - barHeight/2;
+    newSliderPosition = sliderPosition;
+    sliderPositionMin = xPosition;
+    sliderPositionMax = xPosition + barWidth - barHeight;
+  }
+  /**
+   * @brief Updates the state of the scrollbar according to the mouse movement
+   */
+  public void update() {
+    if (isMouseOver()) {
+      mouseOver = true;
+    } else {
+      mouseOver = false;
+    }
+    if (mousePressed && mouseOver) {
+      locked = true;
+    }
+    if (!mousePressed) {
+      locked = false;
+    }
+    if (locked) {
+      newSliderPosition = constrain(mouseX - barHeight/2, sliderPositionMin, sliderPositionMax);
+    }
+    if (abs(newSliderPosition - sliderPosition) > 1) {
+      sliderPosition = sliderPosition + (newSliderPosition - sliderPosition);
+    }
+  }
+  /**
+   * @brief Clamps the value into the interval
+   *
+   * @param val The value to be clamped
+   * @param minVal Smallest value possible
+   * @param maxVal Largest value possible
+   *
+   * @return val clamped into the interval [minVal, maxVal]
+   */
+  public float constrain(float val, float minVal, float maxVal) {
+    return min(max(val, minVal), maxVal);
+  }
+  /**
+   * @brief Gets whether the mouse is hovering the scrollbar
+   *
+   * @return Whether the mouse is hovering the scrollbar
+   */
+  public boolean isMouseOver() {
+    if (mouseX > xPosition && mouseX < xPosition+barWidth &&
+      mouseY > yPosition && mouseY < yPosition+barHeight) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+  /**
+   * @brief Draws the scrollbar in its current state
+   */
+  public void display() {
+    noStroke();
+    fill(204);
+    rect(xPosition, yPosition, barWidth, barHeight);
+    if (mouseOver || locked) {
+      fill(0, 0, 0);
+    } else {
+      fill(102, 102, 102);
+    }
+    rect(sliderPosition, yPosition, barHeight, barHeight);
+  }
+  /**
+   * @brief Gets the slider position
+   *
+   * @return The slider position in the interval [0,1]
+   * corresponding to [leftmost position, rightmost position]
+   */
+  public float getPos() {
+    return (sliderPosition - xPosition)/(barWidth - barHeight);
+  }
+}
+
+
+
+class HoughComparator implements Comparator<Integer> {
+  int[] accumulator;
+  public HoughComparator(int[] accumulator) {
+    this.accumulator = accumulator;
+  }
+  @Override
+    public int compare(Integer l1, Integer l2) {
+    if (accumulator[l1] > accumulator[l2]
+      || (accumulator[l1] == accumulator[l2] && l1 < l2)) return -1;
+    return 1;
+  }
+}
+
+  static public void main(String[] passedArgs) {
+    String[] appletArgs = new String[] { "ImageProcessing" };
+    if (passedArgs != null) {
+      PApplet.main(concat(appletArgs, passedArgs));
+    } else {
+      PApplet.main(appletArgs);
+    }
+  }
 }
