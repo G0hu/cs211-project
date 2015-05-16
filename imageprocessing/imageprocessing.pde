@@ -3,12 +3,15 @@ import processing.core.PApplet;
 import processing.core.PImage;
 import processing.video.Capture;
 import java.util.Collections;
+import java.util.Random;
 
 boolean useStill = true;
 
 PImage img, result, stillImg;
 Capture cam;
 int min, max;
+
+int maxLines = 4;
 
 public void setup() {
   size(800 * 2 + 600, 600);
@@ -80,17 +83,73 @@ public void draw() {
   image(img, 0, 0);
   
   PImage houghImg = hough(result, lines);
-  // image(houghImg, 800, 0);
-  
+  image(houghImg, 800, 0);
   intersections = getIntersections(lines);
   
-  image(result, 800 + 600 - 600, 0);
+  ArrayList<PVector[]> quads = computeQuads(lines);
+  
+  for (PVector[] quad : quads) {
+    Random random = new Random();
+    fill(color(min(255, random.nextInt(300)),
+               min(255, random.nextInt(300)),
+               min(255, random.nextInt(300)), 50));
+               
+    quad(quad[0].x,quad[0].y,quad[1].x,quad[1].y,quad[2].x,quad[2].y,quad[3].x,quad[3].y);
+  }
+  
+  // Show intersections as given by the first quad
+  if (quads.size() > 0) {
+    PVector[] quad = quads.get(0);
+    println("Showing corners using quad: " + quad[0] + ", " +  quad[1] + ", " +  quad[2] + ", " +  quad[3]);
+    for (PVector intersection : quad) {
+      fill(255, 128, 0);
+      ellipse(intersection.x, intersection.y, 10, 10);  
+    }
+  // otherwise use the previous methods that computes all intersections
+  } else {
+    println("Showing all intersections.");
+    for (PVector intersection : getIntersections(lines)) {
+      fill(255, 128, 0);
+      ellipse(intersection.x, intersection.y, 10, 10);  
+    }
+  }
+  
+  
+  image(result, 800 + 600, 0);
   
   if (useStill) {
      noLoop(); 
   }
 }
 
+public ArrayList<PVector[]> computeQuads(ArrayList<PVector> lines) {
+  QuadGraph graph = new QuadGraph();
+  graph.build(lines, 800, 600);
+  
+  ArrayList<int[]> quads = (ArrayList<int[]>)graph.findCycles();
+  ArrayList<PVector[]> validQuads = new ArrayList<PVector[]>();
+  
+  for (int[] quad : quads) {
+    PVector l1 = lines.get(quad[0]);
+    PVector l2 = lines.get(quad[1]);
+    PVector l3 = lines.get(quad[2]);
+    PVector l4 = lines.get(quad[3]);
+    
+    PVector c12 = intersection(l1, l2);
+    PVector c23 = intersection(l2, l3);
+    PVector c34 = intersection(l3, l4);
+    PVector c41 = intersection(l4, l1);
+    
+    if (QuadGraph.isConvex(c12, c23, c34, c41) &&
+        QuadGraph.validArea(c12, c23, c34, c41, 1000000, 50000) &&
+        QuadGraph.nonFlatQuad(c12, c23, c34, c41)) {
+          PVector[] validQuad = {c12, c23, c34, c41};
+            validQuads.add(validQuad);
+    }
+  } 
+  
+  return validQuads;
+}
 
 //algorithm that keep only pixels with a specific hue (color)
 public PImage hueThreshold(PImage img, int hueMin, int hueMax) {
@@ -346,7 +405,7 @@ public PImage hough(PImage edgeImg, ArrayList<PVector> lines) {
 
 
   Collections.sort(bestCandidates, new HoughComparator(accumulator));
-  bestCandidates = new ArrayList<Integer>(bestCandidates.subList(0, Math.min(bestCandidates.size(), 5)));
+  bestCandidates = new ArrayList<Integer>(bestCandidates.subList(0, Math.min(bestCandidates.size(), maxLines)));
 
 
   //Display of the lines
@@ -417,16 +476,16 @@ public ArrayList<PVector> getIntersections(ArrayList<PVector> lines) {
     PVector line1 = lines.get(i);
     for (int j = i + 1; j < lines.size (); j++) {
       PVector line2 = lines.get(j);
-      // compute the intersection and add it to 'intersections'
-      // draw the intersection
-
-      double d = Math.cos(line2.y)*Math.sin(line1.y) -Math.cos(line1.y)*Math.sin(line2.y);
-      double x = (line2.x*Math.sin(line1.y)-line1.x*Math.sin(line2.y))/d;
-      double y = (-line2.x*Math.cos(line1.y)+line1.x*Math.cos(line2.y))/d;
-
-      fill(255, 128, 0);
-      ellipse((float)x, (float)y, 10, 10);
+      intersections.add(intersection(line1, line2));
     }
   }
   return intersections;
+}
+
+public PVector intersection(PVector line1, PVector line2) {
+  double d = Math.cos(line2.y)*Math.sin(line1.y) -Math.cos(line1.y)*Math.sin(line2.y);
+  double x = (line2.x*Math.sin(line1.y)-line1.x*Math.sin(line2.y))/d;
+  double y = (-line2.x*Math.cos(line1.y)+line1.x*Math.cos(line2.y))/d;
+  
+  return new PVector((float)x, (float)y);
 }
