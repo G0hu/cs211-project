@@ -4,17 +4,24 @@ import processing.core.PImage;
 import processing.video.Capture;
 import java.util.Collections;
 
+boolean useStill = true;
+
 PImage img, result, stillImg;
 Capture cam;
 int min, max;
 
 public void setup() {
 
-  size(800, 600);
+  if (useStill) {
+    // Loading the still image for testing purpose
+    // (replace the img by stillImg to use still instead of webcam stream
+    stillImg = loadImage("board1.jpg");
+  } else {
+    setupCamera();
+  }
+}
 
-  //loading the still image for testing purpose (replace the img by stillImg to use still instead of webcam stream
-  stillImg = loadImage("board1.jpg");
-
+public void setupCamera() {
   //Setup of the camera
   String[] cameras = Capture.list();
   if (cameras.length == 0) {
@@ -30,6 +37,22 @@ public void setup() {
   }
 }
 
+public PImage getImage() {
+  //getting the camera stream into img to then process it
+  if (useStill) {
+    println("using still");
+    return stillImg;
+  }
+  else if (cam.available() == true) {
+    println("camera available");
+    cam.read();
+    return cam.get();
+  } else {
+    println("camera not available");
+    exit();
+    return null;
+  }
+}
 
 public void draw() {
   //initialization of the list of lines created by hough
@@ -38,12 +61,10 @@ public void draw() {
   //initialization of the list of intersections created by hough
   ArrayList<PVector> intersections = new ArrayList<PVector>();
 
-  //getting the camera stream into img to then process it
-  if (cam.available() == true) {
-    cam.read();
+  img = getImage();
+  if (img == null) {
+    exit();
   }
-  img = cam.get();
-
 
   background(color(0, 0, 0));
 
