@@ -68,16 +68,11 @@ public void draw() {
 
   background(color(0, 0, 0));
 
-  //pipeline (the image(result,0,0) can be moved to test each part
-  result= hueThreshold(img, 80, 130);
-  //image(result, 0, 0);
-  result = brightnessThreshold(result,50);
-  //image(result, 0, 0);
-  result = saturationThreshold(result, 128);
-  //image(result, 0, 0);
-  //result = blurring(result);
-  //result = saturationThreshold(result, 100);
-  image(result, 0, 0);
+  // pipeline (the image(result,0,0) can be moved to test each part
+  result = hueThreshold(img, 80, 140);
+  result = brightnessThreshold(result, 50);
+  result = saturationThreshold(result, 100);
+  result = blurring(result);
   result = sobel(result);
 
   lines= hough(result);
@@ -122,23 +117,21 @@ public PImage saturationThreshold(PImage img, int saturation) {
   return result;
 }
 
-//algorithm that blurrs the image (currently not working)
+// algorithm that blurs the image
 public PImage blurring(PImage target) {
   float[][] kernel = { 
-    {
-      9, 12, 9
-    }
-    , 
-    {
-      12, 15, 12
-    }
-    , 
-    {
-      9, 12, 9
-    }
+    {  9, 12,  9 },
+    { 12, 15, 12 },
+    {  9, 12,  9 }
   };
-  float weight = 1.f;
-  PImage blurred = createImage(target.width, target.height, RGB);
+
+  float weight = 1.0f;
+
+  return applyKernel(target, kernel, weight);
+}
+
+public PImage applyKernel(PImage target, float[][] kernel, float weight) {
+   PImage result = createImage(target.width, target.height, RGB);
   // kernel size N = 3
   for (int i=1; i< target.height-1; i++) {
     for (int j = 1; j< target.width-1; j++) {
@@ -160,12 +153,11 @@ public PImage blurring(PImage target) {
       sumG= sumG/weight;
       sumB= sumB/weight;
 
-
       // - set result.pixels[y * img.width + x] to this value
-      blurred.pixels[i*blurred.width + j]= color(sumR, sumG, sumB);
+      result.pixels[i*result.width + j]= color(sumR, sumG, sumB);
     }
   }
-  return blurred;
+  return result;
 }
 
 //sobel algorithm to detect edges
@@ -249,7 +241,7 @@ public PImage sobel(PImage img) {
 public ArrayList<PVector> hough(PImage edgeImg) {
 
   ArrayList<PVector> lines = new ArrayList<PVector>();
-  float discretizationStepsPhi = 0.06f;
+  float discretizationStepsPhi = 0.04f;
   float discretizationStepsR = 2.5f;
 
   // dimensions of the accumulator
